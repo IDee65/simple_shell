@@ -1,4 +1,4 @@
-# C- Simple Shell Group Project by Idemudia Agbonghae Oladele Ifeoluwa
+# C- Simple Shell Group Project by Idemudia Agbonghae and Oladele Ifeoluwa
 
 ## Requirements
 * llowed editors: vi, vim, emacs
