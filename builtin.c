@@ -1,129 +1,97 @@
 #include "shell.h"
 
 /**
- * exit_handler - handles exit builtin
- * @array: array of strings commands for execution
- * @line: user input
- * @newline: user input with newline truncated
- * @cmd_count: no of commands entered by the user
- * Return: 0 on success, or exit code specified by user
+ * _myexit - exits the shell
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: exits with a given exit status
+ *         (0) if info.argv[0] != "exit"
  */
-int exit_handler(char **array, char *line, char *newline, int cmd_count)
+int _myexit(info_t *info)
 {
-	int num, j = 0;
-	char *cmdnum;
+	int exitcheck;
 
-	if (array[1] == NULL)
+	if (info->argv[1])  /* If there is an exit arguement */
 	{
-		free_all(line, newline, array);
-		exit(2);
-	}
-
-	else
-	{
-		num = _atoi(array[1]);
-		if (num == -1)
+		exitcheck = _erratoi(info->argv[1]);
+		if (exitcheck == -1)
 		{
-			cmdnum = print_int(cmd_count);
-			write(STDERR_FILENO, array[0], 7);
-			write(STDERR_FILENO, cmdnum, _strlen(cmdnum));
-			write(STDERR_FILENO, ": exit: Illegal number: ", 24);
-			while (array[1][j] != '\0')
-				j++;
-			write(STDOUT_FILENO, array[1], j);
-			write(STDOUT_FILENO, "\n", 1);
-			return (0);
+			info->status = 2;
+			print_error(info, "Illegal number: ");
+			_eputs(info->argv[1]);
+			_eputchar('\n');
+			return (1);
 		}
-		free_all(line, newline, array);
-		_exit(num);
+		info->err_num = _erratoi(info->argv[1]);
+		return (-2);
 	}
+	info->err_num = -1;
+	return (-2);
 }
 
-
 /**
- * cd_handler - handles the cd builtin
- * @array:  array of command line strings
- * @env: environment variable
- * Return: 0 on success
+ * _mycd - changes the current directory of the process
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-
-int cd_handler(char **array, char **env)
+int _mycd(info_t *info)
 {
-	int i = 0;
-	char cwd[1024];
-	char *newdir;
+	char *s, *dir, buffer[1024];
+	int chdir_ret;
 
-	if (array[1] == NULL)
+	s = getcwd(buffer, 1024);
+	if (!s)
+		_puts("TODO: >>getcwd failure emsg here<<\n");
+	if (!info->argv[1])
 	{
-		if (chdir(_getenv("HOME", env)) == -1)
+		dir = _getenv(info, "HOME=");
+		if (!dir)
+			chdir_ret = /* TODO: what should this be? */
+				chdir((dir = _getenv(info, "PWD=")) ? dir : "/");
+		else
+			chdir_ret = chdir(dir);
+	}
+	else if (_strcmp(info->argv[1], "-") == 0)
+	{
+		if (!_getenv(info, "OLDPWD="))
 		{
-			perror(array[0]);
-			write(STDERR_FILENO, "cd: can't cd to home\n", 21);
+			_puts(s);
+			_putchar('\n');
+			return (1);
 		}
+		_puts(_getenv(info, "OLDPWD=")), _putchar('\n');
+		chdir_ret = /* TODO: what should this be? */
+			chdir((dir = _getenv(info, "OLDPWD=")) ? dir : "/");
+	}
+	else
+		chdir_ret = chdir(info->argv[1]);
+	if (chdir_ret == -1)
+	{
+		print_error(info, "can't cd to ");
+		_eputs(info->argv[1]), _eputchar('\n');
 	}
 	else
 	{
-		getcwd(cwd, 1024);
-		while (cwd[i] != '\0')
-			i++;
-		cwd[i++] = '/';
-		cwd[i] = '\0';
-		newdir = _strconcat(cwd, array[1]);
-		if (newdir == NULL)
-			return (0);
-		if (chdir(newdir) == -1)
-		{
-			perror(array[0]);
-			write(STDERR_FILENO, "can't cd into directory\n", 24);
-		}
-		free(newdir);
+		_setenv(info, "OLDPWD", _getenv(info, "PWD="));
+		_setenv(info, "PWD", getcwd(buffer, 1024));
 	}
 	return (0);
 }
 
 /**
- * env_handler - handles the env builtin
- * @env: environment variable
- * Return: 0 on success
+ * _myhelp - changes the current directory of the process
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-
-int env_handler(char **env)
+int _myhelp(info_t *info)
 {
-	int i = 0, length = 0;
+	char **arg_array;
 
-	while (env[i] != NULL)
-	{
-		length = _strlen(env[i]);
-		write(STDOUT_FILENO, env[i], length);
-		write(STDOUT_FILENO, "\n", 1);
-		i++;
-	}
+	arg_array = info->argv;
+	_puts("help call works. Function not yet implemented \n");
+	if (0)
+		_puts(*arg_array); /* temp att_unused workaround */
 	return (0);
-}
-
-/**
- * checkBuiltins - check if command passed exist in the shell
- * @ar: array of strings to execute
- * @env: the environment variable
- * @line: user input
- * @newline: user input without newline character
- * @cdnum: number of commands entered by the user
- *
- * Return: 0 when builtin command is found, 1 when builtin not found
- */
-
-int checkBuiltins(char **ar, char **env, char *line, char *newline, int cdnum)
-{
-	if (ar == NULL || *ar == NULL)
-		return (1);
-	if (env == NULL || *env == NULL)
-		return (1);
-	if (_strcmp((ar[0]), "exit") == 0)
-		return (exit_handler(ar, line, newline, cdnum));
-	else if (_strcmp((ar[0]), "cd") == 0)
-		return (cd_handler(ar, env));
-	else if (_strcmp((ar[0]), "env") == 0)
-		return (env_handler(env));
-	else
-		return (1);
 }
